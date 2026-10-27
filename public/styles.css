@@ -165,6 +165,12 @@ tr.clickable { cursor: pointer; } tr.clickable:hover { background: var(--elev); 
 .replay input[type=range] { flex: 1; }
 .search-row { margin: 0 0 8px; } .search-row input[type=search] { flex: 1; }
 mark { background: color-mix(in srgb, var(--signal) 28%, transparent); color: var(--ink); border-radius: 2px; padding: 0 1px; }
+.stepper { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.stepper input[type=range] { flex: 1; min-width: 140px; }
+.stepper button { padding: 3px 7px; min-width: 26px; } .stepper button:disabled { opacity: .35; cursor: default; }
+.stepnum { width: 64px; text-align: right; font: 500 12px var(--mono); padding: 4px 6px; border: 1px solid var(--hairline); border-radius: 2px; background: var(--card); color: var(--ink); }
+.stepnum:focus { outline: none; border-color: var(--signal); }
+.picker { margin-bottom: 10px; } .picker select { max-width: 360px; }
 .replay label { font: 500 11px var(--mono); color: var(--mute); display: inline-flex; align-items: center; gap: 6px; }
 
 /* trace */

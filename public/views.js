@@ -30,6 +30,19 @@ export function toolChips(names, onClick) {
     el('div', { class: 'label' }, g, el('span', { class: 'num' }, ' // ' + String(groups.get(g).length).padStart(2, '0'))),
     el('div', { class: 'chips' }, groups.get(g).map((t) => el('span', { class: 'chip' + (onClick ? ' clickable' : ''), title: t.name, onClick: onClick ? () => onClick(t.name) : null }, t.short))))));
 }
+// Precise picker for long ranges: first/prev/next/last, a typeable number, and a range.
+export function stepper({ value, max, onChange, title }) {
+  const clamp = (v) => Math.max(0, Math.min(max, Number.isFinite(v) ? v : 0));
+  const num = el('input', { type: 'number', class: 'stepnum', min: 1, max: max + 1, value: value + 1, title: title || 'type a number and press Enter',
+    onChange: (e) => onChange(clamp(Number(e.target.value) - 1)), onKeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); onChange(clamp(Number(e.target.value) - 1)); } } });
+  return el('div', { class: 'stepper' },
+    el('button', { class: 'small ghost', title: 'first', disabled: value <= 0, onClick: () => onChange(0) }, '«'),
+    el('button', { class: 'small ghost', title: 'previous (←)', disabled: value <= 0, onClick: () => onChange(clamp(value - 1)) }, '‹'),
+    num, el('span', { class: 'mono muted', style: { whiteSpace: 'nowrap' } }, `/ ${max + 1}`),
+    el('button', { class: 'small ghost', title: 'next (→)', disabled: value >= max, onClick: () => onChange(clamp(value + 1)) }, '›'),
+    el('button', { class: 'small ghost', title: 'last', disabled: value >= max, onClick: () => onChange(max) }, '»'),
+    el('input', { type: 'range', min: 0, max, value, onInput: (e) => onChange(Number(e.target.value)) }));
+}
 export function chips(items) { return el('div', { class: 'chips' }, items.map((x) => el('span', { class: 'chip', title: x }, x))); }
 
 // ---------------------------------------------------------------- Loop ----
@@ -124,8 +137,7 @@ export function renderLoop(ctx) {
   );
   const replay = el('div', { class: 'replay' },
     el('button', { class: 'small primary', onClick: ctx.togglePlay }, ctx.playing ? '❚❚ Pause' : '▶ Play'),
-    el('input', { type: 'range', min: 0, max: Math.max(0, snap.records.length - 1), value: n, onInput: (e) => ctx.setCursor(Number(e.target.value)) }),
-    el('span', { class: 'mono muted' }, `${n + 1} / ${snap.records.length}`),
+    stepper({ value: n, max: Math.max(0, snap.records.length - 1), onChange: (v) => ctx.setCursor(v), title: 'record number' }),
     el('select', { onChange: (e) => ctx.setSpeed(Number(e.target.value)) }, [1, 2, 5, 10, 25].map((s) => el('option', { value: s, selected: s === ctx.speed }, s + '×'))),
     el('label', { class: 'muted' }, el('input', { type: 'checkbox', checked: ctx.follow, onChange: (e) => ctx.setFollow(e.target.checked) }), ' follow latest'),
   );
@@ -263,7 +275,20 @@ export function renderContext(ctx) {
     const sel = ctx.reqIndex != null && reqs[ctx.reqIndex] ? ctx.reqIndex : reqs.length - 1;
     const r = reqs[sel];
     const shape = snap.shapes.find((s) => s.hash === r.shapeHash) || null;
-    const picker = el('div', { class: 'row' }, el('span', { class: 'muted' }, 'request'), el('input', { type: 'range', min: 0, max: reqs.length - 1, value: sel, style: { width: '260px' }, onInput: (e) => ctx.setReqIndex(Number(e.target.value)) }), el('span', { class: 'mono' }, `${sel + 1} / ${reqs.length}`), el('span', { class: 'muted' }, fmt.date(r.ts)), el('button', { class: 'small ghost', onClick: () => ctx.openInspector(r.n, ctx.agentId) }, 'raw record'), el('button', { class: 'small primary', onClick: () => ctx.openRequest(r.n) }, 'reconstruct full request body'));
+    // first request of each turn, for the jump-to-turn select
+    const turnOfReq = (req) => { let t = null; for (const tn of snap.turns) { if (tn.n <= req.n) t = tn; else break; } return t; };
+    const firstReqByTurn = new Map();
+    reqs.forEach((q, i) => { const t = turnOfReq(q); if (t && !firstReqByTurn.has(t.index)) firstReqByTurn.set(t.index, i); });
+    const curTurn = turnOfReq(r);
+    const picker = el('div', { class: 'picker' },
+      el('div', { class: 'row', style: { gap: '8px' } }, el('span', { class: 'label' }, 'request'),
+        stepper({ value: sel, max: reqs.length - 1, onChange: (i) => ctx.setReqIndex(i), title: 'request number' })),
+      el('div', { class: 'row', style: { gap: '8px', marginTop: '6px' } },
+        el('span', { class: 'label' }, 'jump to turn'),
+        el('select', { onChange: (e) => ctx.setReqIndex(Number(e.target.value)) }, [...firstReqByTurn.entries()].map(([ti, ri]) => el('option', { value: ri, selected: curTurn && curTurn.index === ti }, `#${ti + 1} · ${snap.turns[ti].promptPreview.slice(0, 48) || snap.turns[ti].origin}`))),
+        el('span', { class: 'chip' }, 'turn ', el('b', {}, curTurn ? String(curTurn.index + 1) : '–')), el('span', { class: 'chip' }, 'record ', el('b', {}, '#' + r.n)), el('span', { class: 'chip' }, fmt.date(r.ts)),
+        el('span', { class: 'grow' }),
+        el('button', { class: 'small ghost', onClick: () => ctx.openInspector(r.n, ctx.agentId) }, 'raw record'), el('button', { class: 'small primary', onClick: () => ctx.openRequest(r.n) }, 'reconstruct full request body')));
     const sysChars = shape && shape.stats ? shape.stats.systemChars : 0, toolsChars = shape && shape.stats ? shape.stats.toolsChars : 0;
     const tailChars = r.tailBlobs.reduce((a, b) => a + (b.size || 0), 0);
     const left = el('div', {},
