@@ -289,6 +289,13 @@ export function renderContext(ctx) {
         el('span', { class: 'chip' }, 'turn ', el('b', {}, curTurn ? String(curTurn.index + 1) : '–')), el('span', { class: 'chip' }, 'record ', el('b', {}, '#' + r.n)), el('span', { class: 'chip' }, fmt.date(r.ts)),
         el('span', { class: 'grow' }),
         el('button', { class: 'small ghost', onClick: () => ctx.openInspector(r.n, ctx.agentId) }, 'raw record'), el('button', { class: 'small primary', onClick: () => ctx.openRequest(r.n) }, 'reconstruct full request body')));
+    const promptText = curTurn ? curTurn.prompt || '' : '';
+    const promptBlock = el('div', { class: 'prompt-box' },
+      el('div', { class: 'label' }, curTurn ? `your prompt · turn ${curTurn.index + 1} · ${curTurn.origin}` : 'prompt', curTurn ? el('a', { href: '#', class: 'num', style: { marginLeft: '8px' }, onClick: (e) => { e.preventDefault(); ctx.openInspector(curTurn.n, ctx.agentId); } }, 'inspect record #' + curTurn.n) : null),
+      promptText.length > 600
+        ? el('details', {}, el('summary', {}, preview(promptText, 200) + '  (' + fmt.int(promptText.length) + ' chars, click to expand)'), el('pre', { class: 'mono' }, promptText))
+        : el('pre', { class: 'mono' }, promptText || '(no prompt text: this turn was started by the harness)'),
+      el('p', { class: 'faint', style: { fontSize: '11px', margin: '4px 0 0' } }, 'This is the text you typed that started the turn. It is sent as a user message in the messages array below, together with every earlier message; later calls in the same turn carry it in the cached prefix.'));
     const sysChars = shape && shape.stats ? shape.stats.systemChars : 0, toolsChars = shape && shape.stats ? shape.stats.toolsChars : 0;
     const tailChars = r.tailBlobs.reduce((a, b) => a + (b.size || 0), 0);
     const left = el('div', {},
@@ -298,7 +305,7 @@ export function renderContext(ctx) {
       r.contextManagement ? el('details', {}, el('summary', {}, 'context_management (server-side context editing)'), el('pre', {}, JSON.stringify(r.contextManagement, null, 1))) : null,
       el('h3', { style: { marginTop: '12px' } }, 'Messages array'),
       el('p', {}, el('b', {}, fmt.int(r.messages)), ' messages: ', el('b', {}, fmt.int(r.keep)), ' reused from the cached prefix (keep) + ', el('b', {}, fmt.int(r.tailLen)), ' new (tail). ', r.base ? 'The base hash identifies the shared prefix.' : ''),
-      r.tailBlobs.length ? table(['role', 'blocks', { label: 'chars', class: 'num' }], r.tailBlobs.map((b) => { const missing = b.role === '?' || !b.size; return el('tr', {}, el('td', { class: missing ? 'faint' : '' }, missing ? 'body not logged' : b.role), el('td', { class: 'mono' }, missing ? '–' : (b.kinds || []).join('+')), tdn(missing ? '–' : fmt.int(b.size))); })) : null,
+      r.tailBlobs.length ? table(['role', 'blocks', { label: 'chars', class: 'num' }, 'preview'], r.tailBlobs.map((b) => { const missing = b.role === '?' || !b.size; return el('tr', {}, el('td', { class: missing ? 'faint' : '' }, missing ? 'body not logged' : b.role), el('td', { class: 'mono' }, missing ? '–' : (b.kinds || []).join('+')), tdn(missing ? '–' : fmt.int(b.size)), el('td', { class: 'muted', style: { maxWidth: '360px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }, title: b.preview }, b.preview || '')); })) : null,
       el('h3', { style: { marginTop: '12px' } }, 'Cache breakpoints'),
       r.cacheBreakpoints.length ? el('ul', { class: 'mono muted', style: { margin: '4px 0', paddingLeft: '18px' } }, r.cacheBreakpoints.map((b) => el('li', {}, (b.path || []).join('.') + ' → ' + JSON.stringify(b.value || b)))) : el('p', { class: 'muted' }, 'none recorded'),
     );
@@ -315,7 +322,7 @@ export function renderContext(ctx) {
         el('p', { class: 'faint', style: { marginTop: '6px' } }, 'Tools not listed here are deferred: the model sees their names only and loads a schema with ToolSearch when needed.'),
       ) : el('p', { class: 'muted' }, 'No shape record for this request (older Claude Code versions do not log it).'),
     );
-    wrap.append(card('Anatomy of one API request', 'What Claude Code actually sends to the Messages API. The transcript stores this content-addressed: api-request lists message hashes, api-request-blob holds each body once, api-request-shape holds the system prompt and tool schemas once per distinct shape.', picker, el('div', { class: 'anatomy' }, left, right)));
+    wrap.append(card('Anatomy of one API request', 'What Claude Code actually sends to the Messages API. The transcript stores this content-addressed: api-request lists message hashes, api-request-blob holds each body once, api-request-shape holds the system prompt and tool schemas once per distinct shape.', picker, promptBlock, el('div', { class: 'anatomy' }, left, right)));
   } else {
     wrap.append(card('Anatomy of one API request', 'This transcript has no api-request records (logged by Claude Code 2.1.29x and later). Token usage above still comes from the assistant records.'));
   }
