@@ -178,11 +178,14 @@ mark { background: color-mix(in srgb, var(--signal) 28%, transparent); color: va
 /* context anatomy */
 .anatomy { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .bar-stack { display: flex; height: 22px; border-radius: 2px; overflow: hidden; border: 1px solid var(--hairline); margin: 6px 0; }
-.bar-stack div { min-width: 2px; border-right: 2px solid var(--card); }
+.bar-stack div { min-width: 4px; border-right: 2px solid var(--card); }
 .sys-block { padding: 7px 10px; border: 1px solid var(--hairline); border-radius: var(--r); margin: 4px 0; cursor: pointer; font-size: 12px; background: var(--paper); }
 .sys-block:hover { border-color: var(--signal); }
 details summary { cursor: pointer; color: var(--mute); font: 500 12px var(--sans); }
-.toollist { columns: 3; font-family: var(--mono); font-size: 11px; color: var(--mute); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 6px 0 2px; }
+.chips .chip { text-transform: none; letter-spacing: 0; font-size: 11px; color: var(--ink); max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.chips .chip.clickable { cursor: pointer; } .chips .chip.clickable:hover { border-color: var(--signal); }
+.toolgroups { margin-top: 6px; } .toolgroup { margin: 8px 0; } .toolgroup .label { margin-bottom: 2px; }
 
 /* learn */
 .learn { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; margin-bottom: 14px; }

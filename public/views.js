@@ -15,6 +15,23 @@ function table(headers, rows) {
 }
 const tdn = (v) => el('td', { class: 'num' }, v);
 
+// Tool names as chips grouped by origin (built-in vs each MCP server). Long MCP
+// names never wrap mid-word; the full name is in the title attribute.
+export function toolChips(names, onClick) {
+  const groups = new Map();
+  for (const name of names) {
+    const m = /^mcp__(.+?)__(.+)$/.exec(name);
+    const g = m ? 'mcp · ' + m[1] : 'built-in';
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g).push({ name, short: m ? m[2] : name });
+  }
+  const order = [...groups.keys()].sort((a, b) => (a === 'built-in' ? -1 : b === 'built-in' ? 1 : a.localeCompare(b)));
+  return el('div', { class: 'toolgroups' }, order.map((g) => el('div', { class: 'toolgroup' },
+    el('div', { class: 'label' }, g, el('span', { class: 'num' }, ' // ' + String(groups.get(g).length).padStart(2, '0'))),
+    el('div', { class: 'chips' }, groups.get(g).map((t) => el('span', { class: 'chip' + (onClick ? ' clickable' : ''), title: t.name, onClick: onClick ? () => onClick(t.name) : null }, t.short))))));
+}
+export function chips(items) { return el('div', { class: 'chips' }, items.map((x) => el('span', { class: 'chip', title: x }, x))); }
+
 // ---------------------------------------------------------------- Loop ----
 // Five columns on a 1110-wide canvas; row 1 flows right, row 2 flows left back to the loop.
 const COL = [20, 240, 460, 680, 900], NW = 190, NH = 60, ROW1 = 40, ROW2 = 200;
@@ -252,11 +269,11 @@ export function renderContext(ctx) {
     const left = el('div', {},
       el('h3', {}, 'Request parameters'),
       el('div', { class: 'row', style: { margin: '6px 0' } }, el('span', { class: 'chip' }, 'model ', el('b', {}, r.model || '–')), el('span', { class: 'chip' }, 'max_tokens ', el('b', {}, fmt.int(r.maxTokens))), el('span', { class: 'chip' }, 'thinking ', el('b', {}, r.thinking ? JSON.stringify(r.thinking) : 'off')), el('span', { class: 'chip' }, 'source ', el('b', {}, r.querySource || '–'))),
-      el('details', {}, el('summary', {}, `${r.betas.length} beta features enabled`), el('div', { class: 'mono muted', style: { padding: '6px 0' } }, r.betas.join(' · '))),
+      el('details', {}, el('summary', {}, `${r.betas.length} beta features enabled`), chips(r.betas)),
       r.contextManagement ? el('details', {}, el('summary', {}, 'context_management (server-side context editing)'), el('pre', {}, JSON.stringify(r.contextManagement, null, 1))) : null,
       el('h3', { style: { marginTop: '12px' } }, 'Messages array'),
       el('p', {}, el('b', {}, fmt.int(r.messages)), ' messages: ', el('b', {}, fmt.int(r.keep)), ' reused from the cached prefix (keep) + ', el('b', {}, fmt.int(r.tailLen)), ' new (tail). ', r.base ? 'The base hash identifies the shared prefix.' : ''),
-      r.tailBlobs.length ? table(['role', 'blocks', { label: 'chars', class: 'num' }], r.tailBlobs.map((b) => el('tr', {}, el('td', {}, b.role), el('td', { class: 'mono' }, (b.kinds || []).join('+')), tdn(fmt.int(b.size))))) : null,
+      r.tailBlobs.length ? table(['role', 'blocks', { label: 'chars', class: 'num' }], r.tailBlobs.map((b) => { const missing = b.role === '?' || !b.size; return el('tr', {}, el('td', { class: missing ? 'faint' : '' }, missing ? 'body not logged' : b.role), el('td', { class: 'mono' }, missing ? '–' : (b.kinds || []).join('+')), tdn(missing ? '–' : fmt.int(b.size))); })) : null,
       el('h3', { style: { marginTop: '12px' } }, 'Cache breakpoints'),
       r.cacheBreakpoints.length ? el('ul', { class: 'mono muted', style: { margin: '4px 0', paddingLeft: '18px' } }, r.cacheBreakpoints.map((b) => el('li', {}, (b.path || []).join('.') + ' → ' + JSON.stringify(b.value || b)))) : el('p', { class: 'muted' }, 'none recorded'),
     );
@@ -269,7 +286,7 @@ export function renderContext(ctx) {
           el('div', { style: { flex: String(Math.max(1, tailChars)), background: 'var(--c-user)' }, title: `new tail messages: ${fmt.int(tailChars)} chars` })),
         el('div', { class: 'legend' }, el('span', {}, el('i', { class: 'swatch', style: { background: 'var(--c-harness)' } }), `system prompt ${fmt.int(sysChars)} chars`), el('span', {}, el('i', { class: 'swatch', style: { background: 'var(--c-tool)' } }), `${shape.stats.toolCount} tool schemas ${fmt.int(toolsChars)} chars`), el('span', {}, el('i', { class: 'swatch', style: { background: 'var(--c-user)' } }), `tail ${fmt.int(tailChars)} chars`)),
         ...shape.stats.systemBlocks.map((b, i) => el('div', { class: 'sys-block', onClick: () => ctx.openShape(r.shapeHash, i) }, el('b', {}, `system[${i}] `), el('span', { class: 'muted' }, `${fmt.int(b.chars)} chars${b.cache ? ' · cache_control' : ''}`), el('div', { class: 'faint' }, b.preview + '…'))),
-        el('details', {}, el('summary', {}, `${shape.stats.toolCount} tools sent with the request (click to list)`), el('div', { class: 'toollist' }, shape.stats.toolNames.map((t) => el('div', {}, t)))),
+        el('details', {}, el('summary', {}, `${shape.stats.toolCount} tools sent with the request (click to list)`), toolChips(shape.stats.toolNames)),
         el('p', { class: 'faint', style: { marginTop: '6px' } }, 'Tools not listed here are deferred: the model sees their names only and loads a schema with ToolSearch when needed.'),
       ) : el('p', { class: 'muted' }, 'No shape record for this request (older Claude Code versions do not log it).'),
     );
@@ -453,7 +470,7 @@ export function renderRequestBody(data, { sessionId, agentId, onClose }) {
   // 03 tools
   const toolPre = el('pre', { class: 'mono', hidden: true });
   const sTools = section('Tools', el('p', { class: 'explain' }, `${body.tools.length} tool definitions (name, description, input_schema), ${fmt.int(stats.toolsChars)} chars of JSON. Click a name to see its schema. Tools absent from this list were deferred and only reachable through ToolSearch.`),
-    el('div', { class: 'toollist' }, body.tools.map((t) => el('div', { style: { cursor: 'pointer' }, onClick: () => { toolPre.hidden = false; toolPre.textContent = JSON.stringify(t, null, 2); toolPre.scrollIntoView({ block: 'nearest' }); } }, t.name))), toolPre);
+    toolChips(body.tools.map((t) => t.name), (name) => { const t = body.tools.find((x) => x.name === name); toolPre.hidden = false; toolPre.textContent = JSON.stringify(t, null, 2); toolPre.scrollIntoView({ block: 'nearest' }); }), toolPre);
   // 04 messages
   const tailStart = stats.messages - stats.tail;
   const ccSet = new Set(cachePoints.filter((c) => c.path.startsWith('messages.')).map((c) => Number(c.path.split('.')[1])));
