@@ -296,6 +296,33 @@ export function renderContext(ctx) {
         ? el('details', {}, el('summary', {}, preview(promptText, 200) + '  (' + fmt.int(promptText.length) + ' chars, click to expand)'), el('pre', { class: 'mono' }, promptText))
         : el('pre', { class: 'mono' }, promptText || '(no prompt text: this turn was started by the harness)'),
       el('p', { class: 'faint', style: { fontSize: '11px', margin: '4px 0 0' } }, 'This is the text you typed that started the turn. It is sent as a user message in the messages array below, together with every earlier message; later calls in the same turn carry it in the cached prefix.'));
+    // The API call that answered this request: matched by apiRequestIndex, else the first call after it.
+    const call = snap.calls.find((c) => c.apiRequestIndex === sel) || snap.calls.find((c) => c.n > r.n) || null;
+    const respBody = el('div', { class: 'resp-blocks' });
+    const renderBlocks = (blocks) => { respBody.innerHTML = ''; for (const b of blocks) respBody.append(blockView(b)); };
+    if (call) {
+      // previews from the model first; the full text is fetched on demand
+      renderBlocks(call.blocks.map((b) => b.type === 'thinking' ? { type: 'thinking', thinking: b.preview + (b.chars > 300 ? '  …' : '') } : b.type === 'text' ? { type: 'text', text: b.preview + (b.chars > 400 ? '  …' : '') } : b.type === 'tool_use' ? { type: 'tool_use', name: b.name, id: b.toolId, input: (snap.tools.find((t) => t.id === b.toolId) || {}).input } : { type: b.type }));
+    }
+    const loadFull = el('button', { class: 'small ghost', onClick: async () => {
+      loadFull.disabled = true; loadFull.textContent = 'loading…';
+      try {
+        const ns = [...new Set(call.blocks.map((b) => b.n))];
+        const recs = await Promise.all(ns.map((n) => ctx.fetchRecord(n, ctx.agentId)));
+        renderBlocks(recs.flatMap((rec) => (rec && rec.message && Array.isArray(rec.message.content)) ? rec.message.content : []));
+        loadFull.textContent = 'full response loaded';
+      } catch (e) { loadFull.textContent = 'failed: ' + e.message; }
+    } }, 'load full response');
+    const u = call ? call.usage : null;
+    const responseBlock = el('div', { class: 'prompt-box resp-box' },
+      el('div', { class: 'label row', style: { gap: '8px' } }, call ? `model response · call ${call.index + 1} · stop_reason ${call.stopReason || '…'}` : 'model response',
+        call ? el('a', { href: '#', class: 'num', onClick: (e) => { e.preventDefault(); ctx.openInspector(call.n, ctx.agentId); } }, 'inspect record #' + call.n) : null, el('span', { class: 'grow' }), call ? loadFull : null),
+      call ? el('div', { class: 'row', style: { margin: '6px 0 2px', gap: '6px' } },
+        el('span', { class: 'chip' }, 'latency ', el('b', {}, fmt.ms(call.endedAt - call.startedAt))), el('span', { class: 'chip' }, 'thinking ', el('b', {}, fmt.ms(call.thinkingMs))),
+        el('span', { class: 'chip' }, 'out ', el('b', {}, fmt.tokens(u.output))), el('span', { class: 'chip' }, 'in ', el('b', {}, fmt.tokens(u.input))), el('span', { class: 'chip' }, 'cache read ', el('b', {}, fmt.tokens(u.cacheRead))), el('span', { class: 'chip' }, 'cache write ', el('b', {}, fmt.tokens(u.cacheCreate))),
+        el('span', { class: 'chip blocks' }, 'blocks ', el('b', {}, call.blocks.map((b) => b.type === 'tool_use' ? 'tool_use:' + b.name : b.type).join(', ')))) : el('p', { class: 'muted' }, 'No assistant records follow this request in the transcript.'),
+      respBody,
+      call ? el('p', { class: 'faint', style: { fontSize: '11px', margin: '6px 0 0' } }, call.stopReason === 'tool_use' ? 'stop_reason=tool_use: Claude Code will run the tool_use blocks above, append their results as a user message, and build the next request.' : call.stopReason === 'end_turn' ? 'stop_reason=end_turn: the turn is over; this text is what you saw in the terminal.' : '') : null);
     const sysChars = shape && shape.stats ? shape.stats.systemChars : 0, toolsChars = shape && shape.stats ? shape.stats.toolsChars : 0;
     const tailChars = r.tailBlobs.reduce((a, b) => a + (b.size || 0), 0);
     const left = el('div', {},
@@ -322,7 +349,7 @@ export function renderContext(ctx) {
         el('p', { class: 'faint', style: { marginTop: '6px' } }, 'Tools not listed here are deferred: the model sees their names only and loads a schema with ToolSearch when needed.'),
       ) : el('p', { class: 'muted' }, 'No shape record for this request (older Claude Code versions do not log it).'),
     );
-    wrap.append(card('Anatomy of one API request', 'What Claude Code actually sends to the Messages API. The transcript stores this content-addressed: api-request lists message hashes, api-request-blob holds each body once, api-request-shape holds the system prompt and tool schemas once per distinct shape.', picker, promptBlock, el('div', { class: 'anatomy' }, left, right)));
+    wrap.append(card('Anatomy of one API request', 'What Claude Code actually sends to the Messages API. The transcript stores this content-addressed: api-request lists message hashes, api-request-blob holds each body once, api-request-shape holds the system prompt and tool schemas once per distinct shape.', picker, el('div', { class: 'io-grid' }, promptBlock, responseBlock), el('div', { class: 'anatomy' }, left, right)));
   } else {
     wrap.append(card('Anatomy of one API request', 'This transcript has no api-request records (logged by Claude Code 2.1.29x and later). Token usage above still comes from the assistant records.'));
   }

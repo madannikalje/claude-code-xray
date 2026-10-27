@@ -140,7 +140,7 @@ function ctx() {
     snap, session: state.current, agentId: state.scope, live: state.scope ? null : state.current.live, hooks: state.hooks.filter((h) => !h.sessionId || h.sessionId === state.current.id), hookConfig: state.hookConfig,
     cursor: Math.min(state.cursor, Math.max(0, snap.records.length - 1)), follow: state.follow, playing: state.playing, speed: state.speed, traceLimit: state.traceLimit, reqIndex: state.reqIndex,
     setCursor, setFollow, togglePlay, setSpeed: (s) => { state.speed = s; }, setTraceLimit: (l) => { state.traceLimit = l; renderView(); }, setReqIndex: (i) => { state.reqIndex = i; renderView(); },
-    setTab, setScope, openInspector, openShape, openRequest,
+    setTab, setScope, openInspector, openShape, openRequest, fetchRecord: (n, agentId) => api(`/api/session/${state.current.id}/record/${n}${agentId ? '?agent=' + agentId : ''}`),
     search: state.search, setSearch, searchStep, searchJump, setSearchAll: (v) => { state.search.all = v; if (state.search.q) fetchSearch(); else renderView(); },
   };
 }

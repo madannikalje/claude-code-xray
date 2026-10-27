@@ -171,6 +171,10 @@ mark { background: color-mix(in srgb, var(--signal) 28%, transparent); color: va
 .stepnum { width: 64px; text-align: right; font: 500 12px var(--mono); padding: 4px 6px; border: 1px solid var(--hairline); border-radius: 2px; background: var(--card); color: var(--ink); }
 .stepnum:focus { outline: none; border-color: var(--signal); }
 .picker { margin-bottom: 10px; }
+.io-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; } .io-grid .prompt-box { margin: 0; min-width: 0; }
+@media (max-width: 1100px) { .io-grid { grid-template-columns: 1fr; } }
+.resp-box { border-left-color: var(--c-model); } .resp-box .chip.blocks { white-space: normal; text-align: left; line-height: 1.4; }
+.resp-blocks { max-height: 320px; overflow: auto; } .resp-blocks pre { max-height: none; font-size: 12px; }
 .prompt-box { border: 1px solid var(--hairline); border-left: 3px solid var(--c-user); border-radius: var(--r); background: var(--paper); padding: 10px 12px; margin: 0 0 14px; }
 .prompt-box pre { max-height: 220px; overflow: auto; margin-top: 6px; font-size: 12.5px; font-family: var(--sans); }
 .prompt-box details pre { margin-top: 8px; } .picker select { max-width: 360px; }
