@@ -21,7 +21,7 @@ Screenshots show the built-in synthetic demo session.
 ## Quick start
 
 ```bash
-git clone <this repo> claude-code-xray
+git clone https://github.com/madannikalje/claude-code-xray.git
 cd claude-code-xray
 node server.mjs
 ```
