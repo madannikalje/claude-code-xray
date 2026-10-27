@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "xray", "runtimeExecutable": "node", "runtimeArgs": ["server.mjs", "--port", "4545"], "port": 4545 }
+  ]
+}
