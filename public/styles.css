@@ -115,6 +115,10 @@ main { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
 .chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 2px; font: 500 10.5px/1.2 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--mute); background: var(--card); border: 1px solid var(--hairline); white-space: nowrap; }
 .chip b { font-weight: 600; color: var(--ink); }
 .badge { display: inline-block; padding: 1px 6px; border-radius: 2px; font: 600 10px/1.5 var(--mono); letter-spacing: .06em; text-transform: uppercase; border: 1px solid var(--bc, var(--faint)); color: var(--bc, var(--faint)); background: color-mix(in srgb, var(--bc, var(--faint)) 10%, transparent); white-space: nowrap; }
+.badge.solid { background: var(--bc); color: #fff; border-color: var(--bc); letter-spacing: .08em; }
+.badge.solid.author-harness { color: #1a1916; } /* yellow needs dark text */
+tr:has(> td > .author-harness) > td { background: color-mix(in srgb, var(--c-harness) 6%, transparent); }
+tr:has(> td > .author-you) > td { background: color-mix(in srgb, var(--c-user) 7%, transparent); }
 .badge.prompt, .badge.meta, .badge.user { --bc: var(--c-user); } .badge.assistant { --bc: var(--c-model); } .badge.tool_result { --bc: var(--c-tool); }
 .badge.attachment, .badge.system, .badge.hook { --bc: var(--c-harness); } .badge.api-request, .badge.blob, .badge.shape { --bc: var(--seq-650); }
 .badge.sidechain { --bc: var(--c-agent); } .badge.compaction { --bc: var(--c-error); } .badge.other { --bc: var(--faint); }
